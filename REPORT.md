@@ -6,6 +6,11 @@
 
 Describe what the starter code does and what problems you noticed.
 
+Los problemas principales en el código inicial eran:
+1. **Canal de Enrutamiento Incorrecto**: El flujo de integración inicial enviaba los números generados directamente a los canales `evenChannel` y `oddChannel` sin pasar por un canal intermedio. Esto causaba que los números no fueran correctamente enrutados según su paridad.
+2. **Filtro de Números Impares Mal Configurado**: El filtro en el flujo de números impares no manejaba correctamente los números negativos. Esto resultaba en que los números negativos fueran rechazados en lugar de ser procesados adecuadamente.
+3. **Canales Publicar-Suscribir Innecesarios**: Los canales `evenChannel` y `oddChannel` estaban configurados como canales publicar-suscribir, lo cual no era necesario para este caso de uso. Esto añadía complejidad innecesaria al flujo de mensajes.
+
 ---
 
 ## 2. What Was Wrong

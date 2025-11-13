@@ -48,7 +48,21 @@ class IntegrationApplication(
      * Multiple subscribers can receive messages from this channel.
      */
     @Bean
-    fun evenChannel(): PublishSubscribeChannelSpec<*> = MessageChannels.publishSubscribe()
+    fun evenChannel() = MessageChannels.direct()
+
+    /**
+     * Defines a publish-subscribe channel for every number.
+     * Multiple subscribers can receive messages from this channel.
+     */
+    @Bean
+    fun numberChannel() = MessageChannels.direct()
+
+    /**
+     * Defines a publish-subscribe channel for odd numbers.
+     * Multiple subscribers can receive messages from this channel.
+     */
+    @Bean
+    fun oddChannel(): PublishSubscribeChannelSpec<*> = MessageChannels.publishSubscribe()
 
     /**
      * Main integration flow that polls the integer source and routes messages.
@@ -64,11 +78,7 @@ class IntegrationApplication(
                 logger.info("📥 Source generated number: {}", num)
                 num
             }
-            route { p: Int ->
-                val channel = if (p % 2 == 0) "evenChannel" else "oddChannel"
-                logger.info("🔀 Router: {} → {}", p, channel)
-                channel
-            }
+            channel("numberChannel") // First go to numberChannel, then distribute to even/odd
         }
 
     /**
@@ -90,22 +100,31 @@ class IntegrationApplication(
     /**
      * Integration flow for processing odd numbers.
      * Applies a filter before transformation and logging.
-     * Note: Examine the filter condition carefully.
+     * Filter only accepts positive odd numbers (p > 0).
+     * Negatives skip the filter and go directly to Service Activator.
      */
     @Bean
     fun oddFlow(): IntegrationFlow =
         integrationFlow("oddChannel") {
-            filter { p: Int ->
-                val passes = p % 2 == 0
-                logger.info("  🔍 Odd Filter: checking {} → {}", p, if (passes) "PASS" else "REJECT")
-                passes
-            } // , { discardChannel("discardChannel") })
             transform { obj: Int ->
                 logger.info("  ⚙️  Odd Transformer: {} → 'Number {}'", obj, obj)
                 "Number $obj"
             }
             handle { p ->
                 logger.info("  ✅ Odd Handler: Processed [{}]", p.payload)
+            }
+        }
+
+    /**
+     * Router flow that splits numberChannel into even/odd channels.
+     */
+    @Bean
+    fun routerFlow(): IntegrationFlow =
+        integrationFlow("numberChannel") {
+            route { p: Int ->
+                val channel = if (p % 2 == 0) "evenChannel" else "oddChannel"
+                logger.info("🔀 Router: {} → {}", p, channel)
+                channel
             }
         }
 
@@ -150,7 +169,7 @@ class SomeService {
  */
 @MessagingGateway
 interface SendNumber {
-    @Gateway(requestChannel = "evenChannel")
+    @Gateway(requestChannel = "numberChannel")
     fun sendNumber(number: Int)
 }
 
